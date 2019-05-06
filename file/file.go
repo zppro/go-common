@@ -3,6 +3,7 @@ package file
 import (
 	"bufio"
 	"crypto/sha1"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -24,6 +25,15 @@ func (fei *ExtInfo) FullName () string {
 
 func (fei *ExtInfo) Hash () string {
 	return GetFileHash(fei.FullName())
+}
+
+func IsFileExist(filename string) bool {
+	info, err := os.Stat(filename)
+	if os.IsNotExist(err) {
+		fmt.Println(info)
+		return false
+	}
+	return true
 }
 
 func GetAllFileExtInfo(path string, patterns []string) (extInfos []ExtInfo) {
@@ -95,5 +105,33 @@ func GetFileHash(filename string) (hash string) {
 		return
 	}
 	hash = fmt.Sprintf("%x", h.Sum(nil))
+	return
+}
+
+func CopyFile(source, dest string) (ok bool, err error) {
+	if source == "" || dest == "" {
+		err = errors.New("source or dest is null")
+		return
+	}
+	//打开文件资源
+	sourceOpen, err := os.Open(source)
+	//养成好习惯。操作文件时候记得添加 defer 关闭文件资源代码
+	if err != nil {
+		return
+	}
+	defer sourceOpen.Close()
+	//只写模式打开文件 如果文件不存在进行创建 并赋予 644的权限。详情查看linux 权限解释
+	destOpen, err := os.OpenFile(dest, os.O_CREATE|os.O_WRONLY, 0666)
+	if err != nil {
+		return
+	}
+	//养成好习惯。操作文件时候记得添加 defer 关闭文件资源代码
+	defer destOpen.Close()
+	//进行数据拷贝
+	_, err = io.Copy(destOpen, sourceOpen)
+	if err != nil {
+		return
+	}
+	ok = true
 	return
 }
